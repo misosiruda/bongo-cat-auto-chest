@@ -39,13 +39,47 @@ function Find-Game([string]$ExplicitPath) {
     throw 'Bongo Cat (Steam app 3419430, Windows Mono) was not found. Use -GameDirectory "D:\...\BongoCat".'
 }
 function Get-RecipeHash([string]$Root, [string]$Managed) {
-    $files = @((Get-ChildItem -LiteralPath (Join-Path $Root 'src') -Filter '*.cs' -File))
+    $files = @('AutoChest.cs','ReadyGate.cs','Patch.cs','ValidateReferences.cs') | ForEach-Object { Get-Item -LiteralPath (Join-Path $Root "src\$_") }
     $files += Get-Item -LiteralPath (Join-Path $Root 'Launcher.Core.ps1'), (Join-Path $Root 'Build.ps1'), (Join-Path $Root 'vendor\Mono.Cecil.dll')
     $files += Get-ChildItem -LiteralPath $Managed -Filter '*.dll' -File | Where-Object { $_.Name -notin @('Assembly-CSharp.dll','BongoAutoChest.dll') }
     $text = ($files | Sort-Object FullName | ForEach-Object { $_.Name + ':' + (Get-Sha $_.FullName) }) -join "`n"
     $sha = [Security.Cryptography.SHA256]::Create()
     try { return ([BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($text)))).Replace('-','') }
     finally { $sha.Dispose() }
+}
+function Assert-Settings($Settings) {
+    foreach ($key in @('Enabled','AutoOwn','AutoOthers')) {
+        if ($Settings.$key -isnot [bool]) { throw "Invalid setting: $key" }
+    }
+    foreach ($key in @('MinDelaySeconds','MaxDelaySeconds')) {
+        $value = $Settings.$key
+        if ($value -isnot [ValueType] -or $value -is [bool] -or [double]::IsNaN([double]$value) -or
+            [double]::IsInfinity([double]$value) -or $value -lt 1 -or $value -gt 300) { throw "Invalid setting: $key" }
+    }
+    if ($Settings.MinDelaySeconds -gt $Settings.MaxDelaySeconds) { throw 'Minimum delay must not exceed maximum delay.' }
+    if ($Settings.Enabled -and !$Settings.AutoOwn -and !$Settings.AutoOthers) { throw 'Choose at least one chest target, or pause automatic opening.' }
+}
+function Save-Settings([string]$Game, $Settings) {
+    Assert-Settings $Settings
+    $path = Join-Path $Game 'BongoAutoChest.ini'
+    # Preserve comments and future/unknown keys while removing duplicate known keys.
+    $values = [ordered]@{}
+    foreach ($key in @('Enabled','AutoOwn','AutoOthers')) { $values[$key] = $Settings.$key.ToString().ToLowerInvariant() }
+    foreach ($key in @('MinDelaySeconds','MaxDelaySeconds')) { $values[$key] = ([double]$Settings.$key).ToString([Globalization.CultureInfo]::InvariantCulture) }
+    $lines = @()
+    if (Test-Path -LiteralPath $path) {
+        $lines = @(Get-Content -LiteralPath $path | Where-Object {
+            $parts = $_ -split '=',2
+            $parts.Count -ne 2 -or !$values.Contains($parts[0].Trim())
+        })
+    }
+    foreach ($key in $values.Keys) { $lines += "$key=$($values[$key])" }
+    $temp = Join-Path $Game ('settings-' + [Guid]::NewGuid().ToString('N') + '.tmp')
+    try {
+        [IO.File]::WriteAllLines($temp,$lines,[Text.UTF8Encoding]::new($false))
+        Replace-File $temp $path
+    } finally { if (Test-Path -LiteralPath $temp) { Remove-Item -LiteralPath $temp -Force } }
+    Write-Host 'Settings saved.'
 }
 function Stop-GameForChange {
     foreach ($p in @(Get-Process BongoCat -ErrorAction SilentlyContinue)) {

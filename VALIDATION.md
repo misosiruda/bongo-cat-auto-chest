@@ -1,5 +1,18 @@
 # Validation
 
+## v1.1.0 — Windows wizard
+
+- 12 wizard model checks passed: own-only defaults, existing choices, pause, target selection, delay validation, INI parsing, JSON roundtrip, secondary Steam libraries and Windows argument quoting.
+- Additional integration checks passed for saving explicit target choices, removing duplicate old keys, preserving comments/unknown settings, invariant decimal formatting, and refusing invalid settings without changing the file.
+- The existing dispatch and game-copy installation/update/restore tests passed with the new defaults and settings writer.
+- Native Windows UI was exercised: automatic game discovery, loading existing choices, independently unchecking other players' chests, blocking an empty target selection, and pausing automation. An initially misplaced footer button was corrected and visually checked.
+- The packaged EXE completed real installation, settings save and Steam launch on the existing local game. Its prior own/others choices and 3–8 second interval were retained. The game logged a successful helper load after restart.
+- Desktop shortcut creation succeeded. The shortcut points to a retained EXE in the user's local app-data directory, so deleting the downloaded copy does not break it.
+- Known UI condition: Bongo Cat's always-on-top overlay can cover the wizard. Close the game before setup as described in the README.
+- No second physical PC, high-DPI display matrix, administrator restart/UAC flow, or manual global-hotkey test was performed. The executable is not code-signed.
+
+## v1.0.0 — Original launcher
+
 Release v1.0.0 was checked on Windows with Windows PowerShell 5.1 and the built-in .NET Framework C# compiler.
 
 - Steam install discovery found Bongo Cat app 3419430.

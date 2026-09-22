@@ -7,6 +7,8 @@ $bin = Join-Path $root 'build\tools'
 $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
 Invoke-Checked $csc @('/nologo','/langversion:5',"/out:$bin\ReadyGateTests.exe",(Join-Path $root 'src\ReadyGate.cs'),(Join-Path $PSScriptRoot 'ReadyGateTests.cs'))
 Invoke-Checked (Join-Path $bin 'ReadyGateTests.exe') @()
+Invoke-Checked $csc @('/nologo','/langversion:5','/codepage:65001','/reference:System.Web.Extensions.dll',"/out:$bin\WizardModelTests.exe",(Join-Path $root 'src\WizardModel.cs'),(Join-Path $PSScriptRoot 'WizardModelTests.cs'))
+Invoke-Checked (Join-Path $bin 'WizardModelTests.exe') @()
 foreach ($script in @(Get-ChildItem -LiteralPath $root -Filter '*.ps1') + @(Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.ps1')) {
     $tokens = $null; $errors = $null
     [void][Management.Automation.Language.Parser]::ParseFile($script.FullName,[ref]$tokens,[ref]$errors)
@@ -48,6 +50,17 @@ try {
     $config = Join-Path $fixture 'BongoAutoChest.ini'
     [IO.File]::WriteAllText($config,"Enabled=false`nMinDelaySeconds=4`nMaxDelaySeconds=7")
     $configHash = Get-Sha $config
+    $custom = [pscustomobject]@{ Enabled = $true; AutoOwn = $true; AutoOthers = $false; MinDelaySeconds = 3.5; MaxDelaySeconds = 8 }
+    Add-Content -LiteralPath $config "`n# preserved comment`nFutureOption=keep`nAutoOthers=true`nAutoOthers=true"
+    Save-Settings $fixture $custom
+    $saved = Get-Content -LiteralPath $config -Raw
+    Check ($saved.Contains('AutoOthers=false') -and !$saved.Contains('AutoOthers=true')) 'wizard explicit opt-out removes duplicate old keys'
+    Check ($saved.Contains('FutureOption=keep') -and $saved.Contains('# preserved comment')) 'wizard preserves unrelated settings and comments'
+    Check ($saved.Contains('MinDelaySeconds=3.5')) 'wizard writes culture independent decimal values'
+    $configHash = Get-Sha $config
+    $custom.MinDelaySeconds = 20
+    Expect-Failure { Save-Settings $fixture $custom } 'invalid wizard settings rejected'
+    Check ((Get-Sha $config) -eq $configHash) 'invalid wizard settings leave file unchanged'
     Invoke-Installation $root $fixture 'Install'
     Check ((Get-Sha $target) -eq $first.patchedHash) 'repeat install is idempotent'
     Invoke-Installation $root $fixture 'Restore'

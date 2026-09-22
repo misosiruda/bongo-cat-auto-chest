@@ -30,7 +30,7 @@ namespace BongoAutoChest
         private static readonly System.Random Random = new System.Random();
         private static OpenChestForMember[] RemoteButtons = new OpenChestForMember[0];
         private static string ConfigPath, LogPath;
-        private static bool Initialized, Enabled = true, Own = true, Others = true, HotkeyWasDown, Faulted;
+        private static bool Initialized, Enabled = true, Own = true, Others = false, HotkeyWasDown, Faulted;
         private static double MinDelay = 3, MaxDelay = 8, NextAction, NextConfig, NextScan, NextObserve;
         private static DateTime ConfigStamp;
         private static string LastSummary = "";
