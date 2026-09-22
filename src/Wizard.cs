@@ -183,14 +183,14 @@ namespace BongoAutoChest.Setup
             others = CheckAt("다른 사람의 상자도 개봉",36,135,700,settings.AutoOthers); others.Font = new Font(Font,FontStyle.Bold);
             var cost = LabelAt("선택 사항 · 로비에 보이는 상자를 열 때 내 포인트를 소비해요.",58,168,704,28,false);
             cost.ForeColor = Color.FromArgb(158,92,21);
-            LabelAt("개봉 사이 대기 시간",36,219,240,26,true);
+            LabelAt("발견·개봉 대기 시간",36,219,240,26,true);
             minimum = new NumericUpDown { Minimum = 1, Maximum = 300, DecimalPlaces = 1, Value = settings.MinDelaySeconds, AccessibleName = "최소 대기 시간" };
             maximum = new NumericUpDown { Minimum = 1, Maximum = 300, DecimalPlaces = 1, Value = settings.MaxDelaySeconds, AccessibleName = "최대 대기 시간" };
             minimum.SetBounds(270,217,85,30); maximum.SetBounds(405,217,85,30); body.Controls.AddRange(new Control[] { minimum,maximum });
             LabelAt("~",373,222,25,26,false); LabelAt("초",503,222,30,26,false);
             ButtonAt("기본값 3~8초",580,213,178,delegate { minimum.Value = 3; maximum.Value = 8; });
             shortcutBox = CheckAt("바탕화면에 도우미 바로 가기 만들기",36,278,720,shortcut);
-            LabelAt("이 창을 다시 열면 설정을 바꿀 수 있어요. 게임 중에는 Ctrl+Alt+F9로 켜고 끌 수 있어요.",36,322,748,48,false);
+            LabelAt("상자 발견 후와 개봉 사이에 같은 범위를 적용해요.\n게임 중에는 Ctrl+Alt+F9로 켜고 끌 수 있어요.",36,322,748,48,false);
             validation = LabelAt("",36,378,748,45,false); validation.ForeColor = Color.FromArgb(170,51,51);
             EventHandler update = delegate { UpdateSelection(); };
             enabled.CheckedChanged += update; own.CheckedChanged += update; others.CheckedChanged += update;
@@ -300,7 +300,7 @@ namespace BongoAutoChest.Setup
             LabelAt(restored ? "자동 개봉이 제거되었어요" : settings.Enabled ? "자동 개봉 켜짐" : "자동 개봉 꺼짐",36,30,740,36,true).ForeColor = Color.FromArgb(25,122,92);
             if (!restored) {
                 LabelAt("내 상자: " + (settings.AutoOwn ? "켜짐" : "꺼짐") + "     ·     다른 사람의 상자: " + (settings.AutoOthers ? "켜짐" : "꺼짐")
-                    + "\n개봉 사이 대기: " + settings.MinDelaySeconds + "~" + settings.MaxDelaySeconds + "초",36,90,748,75,true);
+                    + "\n발견·개봉 대기: " + settings.MinDelaySeconds + "~" + settings.MaxDelaySeconds + "초",36,90,748,75,true);
                 LabelAt("설정을 바꾸려면 도우미를 다시 열어 주세요.\n게임 업데이트 후에도 이 도우미로 실행하면 다시 적용해요.",36,194,748,70,false);
                 if (!string.IsNullOrEmpty(warning)) LabelAt(warning,36,290,748,90,false);
                 ButtonAt("개봉 설정 바꾸기",36,375,215,delegate { ShowSettings(); });

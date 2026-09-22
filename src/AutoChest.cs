@@ -77,7 +77,7 @@ namespace BongoAutoChest
                 if (!File.Exists(ConfigPath)) SaveConfig();
                 ReadConfig();
                 Schedule(now);
-                Log("Loaded v1; own=" + Own.ToString() + "; others=" + Others.ToString() + "; enabled=" + Enabled.ToString()
+                Log("Loaded v1.1.1; own=" + Own.ToString() + "; others=" + Others.ToString() + "; enabled=" + Enabled.ToString()
                     + "; delay=" + MinDelay.ToString() + ".." + MaxDelay.ToString() + "s; Ctrl+Alt+F9 toggles.");
             }
             bool hotkey = Down(0x11) && Down(0x12) && Down(0x78);
@@ -102,8 +102,8 @@ namespace BongoAutoChest
             if (now < NextObserve) return;
             NextObserve = now + 0.5;
             var candidates = new List<Candidate>();
-            ObserveOwn(Shop.NormalShop, "own:cosmetic", candidates);
-            ObserveOwn(Shop.EmoteShop, "own:emote", candidates);
+            ObserveOwn(Shop.NormalShop, "own:cosmetic", candidates, now);
+            ObserveOwn(Shop.EmoteShop, "own:emote", candidates, now);
             if (now >= NextScan)
             {
                 NextScan = now + 3;
@@ -112,7 +112,7 @@ namespace BongoAutoChest
             int remoteReady = 0;
             if (LobbyData.Current.IsValid)
                 foreach (OpenChestForMember button in RemoteButtons)
-                    if (ObserveRemote(button, candidates)) remoteReady++;
+                    if (ObserveRemote(button, candidates, now)) remoteReady++;
 
             if (now >= NextSummary)
             {
@@ -131,10 +131,11 @@ namespace BongoAutoChest
             selected.Gate.MarkAttempt();
             Schedule(now);
             int price = (int)PriceField.GetValue(selected.Item);
+            string discoveryWait = "; sinceDiscoverySeconds=" + (now - selected.Gate.DiscoveredAt).ToString(CultureInfo.InvariantCulture);
             if (selected.IsOwn)
             {
                 OwnRequests[selected.Item.GetInstanceID()] = selected.Key;
-                Log("REQUEST " + selected.Key + "; price=" + price.ToString());
+                Log("REQUEST " + selected.Key + "; price=" + price.ToString() + discoveryWait);
                 selected.Item.Buy();
                 if (!(bool)WaitingField.GetValue(selected.Item))
                 {
@@ -147,7 +148,7 @@ namespace BongoAutoChest
                 selected.Button.OnClicked();
                 bool sent = (bool)ClickedField.GetValue(selected.Button);
                 Log((sent ? "SENT " : "NOT_STARTED ") + selected.Key + "; price=" + price.ToString()
-                    + "; recipient reward not confirmed by this log.");
+                    + discoveryWait + "; recipient reward not confirmed by this log.");
             }
         }
 
@@ -164,16 +165,24 @@ namespace BongoAutoChest
             ShopItem item = (ShopItem)ShopItemField.GetValue(shop);
             return (bool)OpeningField.GetValue(shop) || (item && (bool)WaitingField.GetValue(item));
         }
-        private static void ObserveOwn(Shop shop, string key, List<Candidate> candidates)
+        private static bool ObserveGate(ReadyGate gate, bool ready, string key, double now)
+        {
+            bool discovered = ready && !gate.Ready;
+            double delay = discovered ? DrawDelay() : 0;
+            bool cleared = gate.Observe(ready, now, delay);
+            if (discovered) Log("DISCOVERED " + key + "; delaySeconds=" + delay.ToString(CultureInfo.InvariantCulture));
+            return cleared;
+        }
+        private static void ObserveOwn(Shop shop, string key, List<Candidate> candidates, double now)
         {
             if (!shop) return;
             ReadyGate gate = Gate(key);
-            gate.Observe(shop.ChestIsReady);
+            ObserveGate(gate, shop.ChestIsReady, key, now);
             ShopItem item = (ShopItem)ShopItemField.GetValue(shop);
-            if (Own && gate.CanAttempt && item && item.gameObject.activeSelf && !IsBusy(shop) && item.CanBuy())
+            if (Own && gate.CanAttemptAt(now, NextAction) && item && item.gameObject.activeSelf && !IsBusy(shop) && item.CanBuy())
                 candidates.Add(new Candidate { Key = key, Gate = gate, Shop = shop, Item = item, IsOwn = true });
         }
-        private static bool ObserveRemote(OpenChestForMember button, List<Candidate> candidates)
+        private static bool ObserveRemote(OpenChestForMember button, List<Candidate> candidates, double now)
         {
             if (!button || !button.gameObject.scene.IsValid()) return false;
             SteamUserData target = (SteamUserData)TargetField.GetValue(button);
@@ -189,7 +198,7 @@ namespace BongoAutoChest
             if (!bool.TryParse(member.Data[metadataKey], out ready)) return false;
             string key = "remote:" + target.Data.IdStr + ":" + metadataKey;
             ReadyGate gate = Gate(key);
-            bool cleared = gate.Observe(ready);
+            bool cleared = ObserveGate(gate, ready, key, now);
             if (cleared) Log("READY_CLEARED " + key + "; not an item-delivery acknowledgement.");
             if (!ready)
             {
@@ -200,7 +209,7 @@ namespace BongoAutoChest
             bool clicked = (bool)ClickedField.GetValue(button);
             if (clicked) gate.MarkAttempt(); // Includes a manual click by the user.
             var visibleChest = (GameObject)ObjectField.GetValue(active);
-            if (!Others || !gate.CanAttempt || instance.IsHidden || !button.isActiveAndEnabled
+            if (!Others || !gate.CanAttemptAt(now, NextAction) || instance.IsHidden || !button.isActiveAndEnabled
                 || !visibleChest || !visibleChest.activeInHierarchy) return true;
             ChestType type = (ChestType)TypeField.GetValue(button);
             Shop shop = type == ChestType.Emote ? Shop.EmoteShop : Shop.NormalShop;
@@ -226,7 +235,8 @@ namespace BongoAutoChest
             }
             catch (Exception ex) { Log("Result logging error: " + ex.Message); }
         }
-        private static void Schedule(double now) { NextAction = now + MinDelay + (Random.Next(1000000) / 1000000.0) * (MaxDelay - MinDelay); }
+        private static double DrawDelay() { return MinDelay + (Random.Next(1000000) / 1000000.0) * (MaxDelay - MinDelay); }
+        private static void Schedule(double now) { NextAction = now + DrawDelay(); }
         private static void ReadConfig()
         {
             foreach (string raw in File.ReadAllText(ConfigPath).Split('\n'))

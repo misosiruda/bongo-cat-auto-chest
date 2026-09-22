@@ -1,5 +1,14 @@
 # Validation
 
+## v1.1.1 — Wait after discovery
+
+- 15 dispatch gate checks passed, including an idle dispatcher, exact timing boundaries, overlapping cooldowns, repeated observations, independent chests, disappearing chests and one attempt per ready cycle.
+- The same configured range samples a delay on the first observation of each ready cycle and between opening actions. Repeated observations retain the first deadline. Both deadlines must expire; they are not added together.
+- All 12 wizard model checks and the game-copy installation/update/restore/settings checks passed.
+- All 178 helper runtime references resolved against the installed game's assemblies; all 3,339 original method bodies were preserved after the two prefixes.
+- The local game was restarted normally and logged v1.1.1 loading without errors. The settings file hash was unchanged.
+- Discovery logs include the sampled delay; request logs include elapsed time since discovery, allowing timing checks without relying on rounded wall-clock timestamps.
+
 ## v1.1.0 — Windows wizard
 
 - 12 wizard model checks passed: own-only defaults, existing choices, pause, target selection, delay validation, INI parsing, JSON roundtrip, secondary Steam libraries and Windows argument quoting.

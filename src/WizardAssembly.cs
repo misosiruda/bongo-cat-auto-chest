@@ -3,5 +3,5 @@ using System.Reflection;
 [assembly: AssemblyDescription("Bongo Cat 자동 상자 개봉 설정 마법사")]
 [assembly: AssemblyProduct("Bongo Cat Auto Chest")]
 [assembly: AssemblyCompany("misosiruda")]
-[assembly: AssemblyVersion("1.1.0.0")]
-[assembly: AssemblyFileVersion("1.1.0.0")]
+[assembly: AssemblyVersion("1.1.1.0")]
+[assembly: AssemblyFileVersion("1.1.1.0")]
