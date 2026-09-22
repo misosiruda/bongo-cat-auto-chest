@@ -1,0 +1,7 @@
+/build/
+/dist/
+/vendor/*.dll
+*.log
+.bongo-auto-chest/
+Assembly-CSharp*
+*.bak
